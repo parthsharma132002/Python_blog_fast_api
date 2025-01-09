@@ -11,7 +11,6 @@ class BlogRequestSerializer(BaseModel):
 
 class BlogResponseSerializer(BaseModel):
     id : int
-    # id : constr()
     title:Optional [str]
     content:Optional [str] 
 
