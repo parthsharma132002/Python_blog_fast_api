@@ -1,14 +1,20 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, constr
+from typing import Optional
 
-class BlogBase(BaseModel):
+
+class BlogCreateSerializer(BaseModel):
     title: str
     content: str
 
-class BlogCreate(BlogBase):
-    pass
+class BlogRequestSerializer(BaseModel):
+    id : int  
 
-class Blog(BlogBase):
-    id: int
+class BlogResponseSerializer(BaseModel):
+    id : int
+    # id : constr()
+    title:Optional [str]
+    content:Optional [str] 
 
-    class Config:
-        orm_mode = True
+class BlogUpdateSerializer(BaseModel):
+    title:Optional [str]         
+    content:Optional [str] 
