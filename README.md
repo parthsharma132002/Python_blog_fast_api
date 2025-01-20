@@ -8,4 +8,4 @@ Blog Fast Api
    pip install -r requirements.txt
 
 3) run code:
-   uvicorn src.main:app --reload
+   uvicorn src.main:app 

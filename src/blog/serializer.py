@@ -1,20 +1,36 @@
-from pydantic import BaseModel, constr
-from typing import Optional
+from pydantic import BaseModel, UUID4, field_validator
+from typing import Optional, List, Any
+from datetime import datetime
 
-
-class BlogCreateSerializer(BaseModel):
+# Request Serializer
+class BlogPostRequestSerializer(BaseModel):
     title: str
     content: str
+    thumbnail: Optional[str] = None 
+    tags: Optional[List[str]] = []
+    published: Optional[bool] = False
 
-class BlogRequestSerializer(BaseModel):
-    id : int  
+# Response Serializer
+class BlogPostResponseSerializer(BaseModel):
+    id: UUID4
+    title: str
+    content: str
+    thumbnail: Optional[str] = None
+    tags: List[str]
+    published: bool
+    created_at: datetime
+    updated_at: datetime
+        
+    class Config:
+        from_attributes = True
 
-class BlogResponseSerializer(BaseModel):
-    id : int
-    # id : constr()
-    title:Optional [str]
-    content:Optional [str] 
+# Success and Error Response Serializers
+class SuccessResponseSerializer(BaseModel):
+    status_code: int
+    message: str
+    data: Any = None
 
-class BlogUpdateSerializer(BaseModel):
-    title:Optional [str]         
-    content:Optional [str] 
+class ErrorResponseSerializer(BaseModel):
+    status_code: int
+    message: str
+    data: Any = None

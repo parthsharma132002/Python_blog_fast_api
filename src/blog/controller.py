@@ -1,101 +1,119 @@
-from fastapi import status,HTTPException,Query
-from src.db.database import db
-from sqlalchemy import select,update
-import sqlalchemy
-#Local Imports
-# from src.config.config import conf
-from src.utils import constant,response
-from src.utils.constant import BlogMessages
-from src.utils.response import SuccessResponseSerializer,ErrorResponseSerializer
+from fastapi import status, UploadFile, HTTPException
+from typing import Optional, List
+from pydantic import UUID4
+import logging
+import uuid
+from src.blog.schema import BlogSchema
 from src.blog.serializer import (
-    BlogCreateSerializer, BlogRequestSerializer, BlogResponseSerializer, BlogUpdateSerializer
+    BlogPostRequestSerializer,
+    BlogPostResponseSerializer,
+    SuccessResponseSerializer,
+    ErrorResponseSerializer,
 )
-from src.blog.schema import (
-    BlogSchema
-)
-from src.db.models import (
-    Blog  
-)
+from src.utils.constant import BlogMessages
 
-class BlogModule():
+class BlogController:
 
     @classmethod
-    async def create_blog(cls, request:BlogCreateSerializer):
-        if request:
-            if request.title == "" or request.content == "":
-                return response.ErrorResponseSerializer(message = constant.BlogMessages.PROPER_DATA_ERROR)
-            else:
-                context = {
-                    'message':constant.BlogMessages.CREATED_SUCCESS,
-                    'status': status.HTTP_200_OK,
-                    'data':await BlogSchema.create_blog(request=request)
-                }
-                return context
+    async def create_blog_post(
+        cls, 
+        request: BlogPostRequestSerializer, 
+    ):
+        created_post = await BlogSchema.create_blog_post(
+            request = request, 
+        )
+        if not created_post:
+            logging.error(BlogMessages.FAILED_CREATE)
+            serializer = ErrorResponseSerializer(
+                status_code = status.HTTP_400_BAD_REQUEST,
+                message = BlogMessages.FAILED_CREATE,
+                data = {},
+            )
         else:
-            return response.ErrorResponseSerializer(message = constant.BlogMessages.REQUEST_ERROR)    
-        
-    @classmethod
-    async def get_blogs(cls):
-        context = {
-                'message':constant.BlogMessages.FETCH_ALL_SUCCESS,
-                'status':status.HTTP_200_OK,
-                'data':await BlogSchema.get_all_blog()
-            }
-        return context
-    
-    @classmethod
-    async def get_blog_by_id(cls, id):
-        try:
-            context = {
-                'message':constant.BlogMessages.FETCHED_SUCCESS,
-                'status':status.HTTP_200_OK,
-                'data':await BlogSchema.get_blog(id=id)
-            }    
-            return context
-        except Exception as e:
-            return response.ErrorResponseSerializer(message = constant.BlogMessages.ID_ERROR+f" {e}")
-        
-    @classmethod
-    async def update_blog_by_id(cls, request:BlogUpdateSerializer, id):
-        try:
-
-            if request:
-                if request.title == "" and request.content == "":
-                    return response.ErrorResponseSerializer(message = constant.BlogMessages.PROPER_DATA_ERROR)
-                updated_blog = await BlogSchema.update_blog(request=request, id=id)
-        
-                if updated_blog == constant.BlogMessages.NOT_FOUND:
-                    return response.ErrorResponseSerializer(message=constant.BlogMessages.NOT_FOUND)
-                else:
-                    context = {
-                            'message':constant.BlogMessages.UPDATED_SUCCESS,
-                            'status':status.HTTP_200_OK,
-                            'data':await BlogSchema.update_blog(request=request, id=id)
-                        }
-                    return context
-            else:
-                return response.ErrorResponseSerializer(message = constant.BlogMessages.REQUEST_ERROR)
-        except Exception as e:
-            return response.ErrorResponseSerializer(message = constant.BlogMessages.ID_ERROR+f" {e}")
+            logging.info(BlogMessages.CREATED_SUCCESS)
+            serializer = SuccessResponseSerializer(
+                status_code = status.HTTP_200_OK,
+                message = BlogMessages.CREATED_SUCCESS,
+                data=BlogPostResponseSerializer(**created_post.__dict__).dict()
+            )
+        return serializer
 
     @classmethod
-    async def delete_blog(cls, id):
-        try:
-            deleted = await BlogSchema.delete_blog_id(id=id)
-            if deleted is None:
-                context = {
-                    'status': status.HTTP_404_NOT_FOUND,
-                    'message': constant.BlogMessages.NOT_FOUND,
-                    'data': None
-                }
-            else: 
-                context = {
-                    'status': status.HTTP_200_OK,
-                    'message': constant.BlogMessages.DELETED_SUCCESS,
-                    'data': True
-                }
-            return context
-        except Exception as e:
-            return response.ErrorResponseSerializer(message=constant.BlogMessages.ID_ERROR + f" {e}")
+    async def get_all_blog_posts(
+        cls, 
+        page,
+        limit,
+        search_text: Optional[str] = None
+    ):
+        posts = await BlogSchema.get_all_blog_posts(
+            page = page,
+            limit = limit, 
+            search_text = search_text
+        )
+        serialized_posts = [
+            BlogPostResponseSerializer.model_validate(post.__dict__) for post in posts
+        ]
+        serializer = SuccessResponseSerializer(
+            status_code = status.HTTP_200_OK,
+            message = BlogMessages.FETCH_ALL_SUCCESS,
+            data = serialized_posts,
+        )
+        return serializer
 
+    @classmethod
+    async def get_blog_post(
+        cls, 
+        blog_id: UUID4
+    ):
+        post = await BlogSchema.get_blog_post(
+            blog_id
+        )
+        if not post:
+            return ErrorResponseSerializer(
+                status_code = status.HTTP_400_BAD_REQUEST,
+                message = BlogMessages.NOT_FOUND,
+                data = {},
+            )
+        return SuccessResponseSerializer(
+            status_code = status.HTTP_200_OK,
+            message = BlogMessages.FETCHED_SUCCESS,
+            data = BlogPostResponseSerializer(**post.__dict__).dict()
+        )
 
+    @classmethod
+    async def update_blog_post(cls, blog_id: UUID4, request: BlogPostRequestSerializer):
+        updated_post = await BlogSchema.update_blog_post(
+            blog_id, 
+            request
+        )
+        if not updated_post:
+            return ErrorResponseSerializer(
+                status_code = status.HTTP_400_BAD_REQUEST,
+                message = BlogMessages.FAILED_UPDATED,
+                data = {},
+            )
+        return SuccessResponseSerializer(
+            status_code = status.HTTP_200_OK,
+            message = BlogMessages.UPDATED_SUCCESS,
+            data = BlogPostResponseSerializer(**updated_post.__dict__).dict()
+        )
+
+    @classmethod
+    async def delete_blog_post(
+        cls, 
+        blog_id: UUID4
+    ):
+        success = await BlogSchema.delete_blog_post(
+            blog_id
+        )
+        if not success:
+            return ErrorResponseSerializer(
+                status_code = status.HTTP_400_BAD_REQUEST,
+                message = BlogMessages.FAILED_DELETED,
+                data = {},
+            )
+        return SuccessResponseSerializer(
+            status_code = status.HTTP_200_OK,
+            message = BlogMessages.DELETED_SUCCESS,
+            data = {},
+        )
