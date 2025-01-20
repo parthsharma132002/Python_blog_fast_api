@@ -1,34 +1,56 @@
-from fastapi import APIRouter,Depends, Request
-from sqlalchemy.orm import Session
-#Local Imports
-from src.blog.serializer import (BlogCreateSerializer, BlogRequestSerializer, BlogResponseSerializer, BlogUpdateSerializer)
-from src.blog.controller import BlogModule
+from fastapi import APIRouter, HTTPException, status
+from pydantic import UUID4
+from src.blog.controller import BlogController
+from src.blog.serializer import BlogPostRequestSerializer, SuccessResponseSerializer
 
-router = APIRouter(prefix="/blog")
 
-"""Blog add,get,update,delete"""
+router = APIRouter(prefix = "/blog")
 
-@router.post("/create")
-@router.post("/create/")
-async def create_blog(request:BlogCreateSerializer):
-    return await BlogModule.create_blog(request=request)
+@router.post("/blogs")
+async def create_blog_post(
+    request: BlogPostRequestSerializer
+):
+    return await BlogController.create_blog_post(
+        request = request
+    )
 
-@router.get("/blog_get")
-@router.get("/blog_get/")
-async def get_blogs():
-    return await BlogModule.get_blogs()
+@router.get("/blogs")
+async def get_all_blog_posts(
+    page: int = 1,
+    limit: int = 10,
+    search_text: str = None,
+):
+    return await BlogController.get_all_blog_posts(
+        page = page,
+        limit = limit,
+        search_text = search_text
+    )
 
-@router.get("/blog_get_pk/{id}")
-@router.get("/blog_get_pk/{id}/")
-async def get_blog_by_id( id:int):
-    return await BlogModule.get_blog_by_id(id=id)
+@router.get("/blogs/{blog_id}")
+async def get_blog_post(
+    blog_id: UUID4
+):
+    return await BlogController.get_blog_post(
+        blog_id = blog_id
+    )
 
-@router.put("/blog_update_pk/{id}")
-@router.put("/blog_update_pk/{id}/")
-async def update_blog_by_id(request:BlogUpdateSerializer, id:int):
-    return await BlogModule.update_blog_by_id(request=request, id=id)
+@router.put("/blogs/{blog_id}")
+async def update_blog_post(
+    blog_id: UUID4, 
+    request: BlogPostRequestSerializer
+):
+    return await BlogController.update_blog_post(
+        blog_id = blog_id, 
+        request = request
+    )
 
-@router.delete("/blog/{id}")
-@router.delete("/blog/{id}/")
-async def delete_blog(id:int):
-    return await BlogModule.delete_blog(id=id)
+@router.delete("/blogs/{blog_id}")
+async def delete_blog_post(
+    blog_id: UUID4
+):
+    return await BlogController.delete_blog_post(
+        blog_id = blog_id
+    )
+
+
+

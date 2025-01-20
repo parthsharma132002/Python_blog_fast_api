@@ -3,9 +3,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 # Local Imports
-from src.db import models  
-from src.db.database import db
+from src.blog import model  
+from src.config.database import db
 from src.urls import blog
+
+from fastapi.staticfiles import StaticFiles
 
 def init_app():
     db.init()
@@ -16,7 +18,8 @@ def init_app():
         version="1",
     )
 
-    app.include_router(blog.router)
+    app.include_router(blog.router, tags=["blog"])
+
 
     origins = ["*"]
     app.add_middleware(
@@ -26,13 +29,12 @@ def init_app():
         allow_methods=["*"],
         allow_headers=["*"],
     )
-
+    
     return app
 
-
 app = init_app()
-
 
 @app.on_event("startup")
 async def on_startup():
     await db.create_all()
+

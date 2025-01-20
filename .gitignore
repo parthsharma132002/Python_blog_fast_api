@@ -1,5 +1,4 @@
-.venv
-
-blog_fastapi.db
-
+venv
 __pycache__
+.env
+alembic.ini
